@@ -1,0 +1,234 @@
+---
+title: "EDA"
+format: html
+editor: visual
+---
+
+##Introduction
+
+The data we will be looking at is from 70,692 survey responses to the CDC's Behavioral Risk Factor Surveillance System (BRFSS) 2015, which is a health-related telephone survey that is collected annually by the CDC. This data has an equal 50-50 split of respondents with no diabetes and with either prediabetes or diabetes.
+
+#Response/Target Variable
+
+-   **Diabetes_binary**: 2 classes. 0 is for no diabetes, and 1 is for prediabetes or diabetes.
+
+#Feature Variables: Here is a selection fo the feature variables that we will focus on for our analysis
+
+-   **HighBP**: 0 = no high BP 1 = high BP
+
+-   **HighChol**: 0 = no high cholesterol 1 = high cholesterol
+
+-   **BMI**: Body Mass Index
+
+-   **PhysActivity**: physical activity in past 30 days - not including job 0 = no 1 = yes
+
+-   **Fruits**: Consume Fruit 1 or more times per day 0=no 1=yes
+
+-   **Veggies**: Consume veggies 1 or more times per day 0=no 1=yes
+
+-   **HvyAlcoholConsump:** (adult men \>=14 drinks per week and adult women\>=7 drinks per week) 0 = no 1 = yes
+
+-   **MentHlth:** days of poor mental health scale 1-30 days
+
+-   **Sex:** 0 = female 1 = male
+
+```{r}
+library(readr)
+library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+diabetes <- read_csv("diabetes_binary_5050split_health_indicators_BRFSS2015.csv")
+diabetes<-as.tibble(diabetes)
+str(diabetes)
+#selecting only the vatriables we want to look at as described in introduction
+diabetes<-diabetes |>
+  select(Diabetes_binary, HighBP, HighChol, BMI, PhysActivity, Fruits, Veggies, HvyAlcoholConsump, MentHlth, Sex)
+str(diabetes)
+
+#Check for how many NA variables we have
+
+colSums(is.na(diabetes))
+
+#We have found that there are no missing values for the variables we selected, so that is not something we will have to worry about!
+
+#Currently all of all variables are numeric, but it will make more sense to have several of them as factor variables. Next we will create factor versions of all variables except BMI and Mental Helath
+
+diabetes <- diabetes |>
+  mutate(
+    DiabetesF = factor(
+      Diabetes_binary,
+      levels = c(0, 1),
+      labels = c("No diabetes", "Prediabetes/Diabetes")
+    ),
+    BPF = factor(
+      HighBP,
+      levels = c(0, 1),
+      labels = c("No high BP", "High BP")
+    ),
+    CholF = factor(
+      HighChol,
+      levels = c(0, 1),
+      labels = c("No high cholesterol", "High cholesterol")
+    ),
+    PhysF = factor(
+      PhysActivity,
+      levels = c(0, 1),
+      labels = c("No", "Yes")
+    ),
+    FruitsF = factor(
+      Fruits,
+      levels = c(0, 1),
+      labels = c("No", "Yes")
+    ),
+    VeggiesF = factor(
+      Veggies,
+      levels = c(0, 1),
+      labels = c("No", "Yes")
+    ),
+    AlcF = factor(
+      HvyAlcoholConsump,
+      levels = c(0, 1),
+      labels = c("No", "Yes")
+    ),
+    SexF = factor(
+      Sex,
+      levels = c(0, 1),
+      labels = c("Female", "Male")
+    )
+  )
+
+diabetes<-diabetes |>
+  select(DiabetesF, BPF, CholF, PhysF, FruitsF, VeggiesF, AlcF, SexF, BMI, MentHlth)
+
+str(diabetes)
+
+#Now lets explore some relationships!
+
+
+```
+
+##Now lets explore some relationships!
+
+```{r}
+#First, lets look at the BMI of no diabetes vs diabetes/prediabeties respondants
+
+diabetes |> 
+  group_by(DiabetesF) |>
+  summarize(
+    mean_BMI = mean(BMI),
+    sd_BMI = sd(BMI)
+  )
+
+#We see that the mean BMI for those with prediabetes/diabetes is about 4 higher than those with no diabetes.
+
+ggplot(diabetes, aes(x = DiabetesF, y = BMI)) +
+  geom_boxplot() +
+  labs(title = "BMI by Diabetes Status",
+       x = "Diabetes Status",
+       y = "BMI") +
+  theme_minimal()
+
+#Next, lets look at the BMI of no diabetes vs diabetes/prediabeties respondants
+
+diabetes |> 
+  group_by(DiabetesF) |>
+  summarize(
+    mean_Mental = mean(MentHlth),
+    sd_Mental = sd(MentHlth)
+  )
+
+#We see that the mean number of days of poor mental health was higer for those with prediabetes/diabetes than those with no diabetes.
+
+
+ggplot(diabetes, aes(x = DiabetesF, y = MentHlth)) +
+  geom_boxplot() +
+  labs(title = "Days of Poor Mental Health vs Diabetes Status",
+       x = "Diabetes Status",
+       y = "Poor Mental Health Days (past 30)") +
+  theme_minimal()
+
+
+#Blood Pressure
+
+diabetes |>
+  group_by(DiabetesF, BPF) |>
+  summarize(n = n()) |>
+  mutate(percent = n / sum(n))
+
+
+#Fruits
+diabetes |>
+  group_by(DiabetesF, FruitsF) |>
+  summarize(n = n())
+
+#Veggies
+
+diabetes |>
+  group_by(DiabetesF, VeggiesF) |>
+  summarize(n = n())
+
+
+#Alcohol
+
+diabetes |>
+  group_by(DiabetesF, AlcF) |>
+  summarize(n = n())
+
+
+#Sex
+
+diabetes |>
+  group_by(DiabetesF, SexF) |>
+  summarize(n = n())
+
+
+
+# Plot each factor
+
+p1 <- ggplot(diabetes, aes(x = BPF, fill = DiabetesF)) +
+  geom_bar(position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "High Blood Pressure", x = "", y = "Proportion") +
+  theme_minimal()
+
+p2 <- ggplot(diabetes, aes(x = CholF, fill = DiabetesF)) +
+  geom_bar(position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "High Cholesterol", x = "", y = "Proportion") +
+  theme_minimal()
+
+p3 <- ggplot(diabetes, aes(x = PhysF, fill = DiabetesF)) +
+  geom_bar(position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Physical Activity", x = "", y = "Proportion") +
+  theme_minimal()
+
+print(p1)
+print(p2)
+print(p3)
+
+
+
+ggplot(diabetes, aes(x = BPF, fill = CholF)) +
+  geom_bar(position = "dodge") +
+  facet_wrap(~ DiabetesF) +
+  labs(title = "High BP vs High Cholesterol by Diabetes Status",
+       x = "High Blood Pressure",
+       y = "Count") +
+  theme_minimal()
+
+
+ggplot(diabetes, aes(x = PhysF, fill = FruitsF)) +
+  geom_bar(position = "dodge") +
+  facet_wrap(~ DiabetesF) +
+  labs(title = "Physical Activity vs Fruit Intake by Diabetes Status",
+       x = "Physical Activity",
+       y = "Count") +
+  theme_minimal()
+```
+
+#Link to Modeling Page
+
+[Click here for the Modeling Page](Modeling.html)
