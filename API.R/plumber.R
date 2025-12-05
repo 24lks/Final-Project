@@ -76,7 +76,7 @@ diabetes<-diabetes |>
   select(DiabetesF, BPF, CholF, PhysF, FruitsF, VeggiesF, AlcF, SexF, BMI, MentHlth)
 
 # Load the final model
-rf_final_model <- readRDS("rf_final_model.rds")
+rf_final_model <- readRDS("../rf_final_model.rds")
 
 
 # Function to return default value for one variable
@@ -138,9 +138,9 @@ MentHlth = predictor_defaults$MentHlth
 }
 
 # Example calls:
-# http://localhost:8000/pred?BMI=30&MentHlth=5
-# http://localhost:8000/pred?BPF=Yes&CholF=No&BMI=22
-# http://localhost:8000/pred?AlcF=Yes&SexF=Female&MentHlth=0
+# http://127.0.0.1:31307/pred?BPF=Yes&CholF=No&PhysF=Yes&FruitsF=No&VeggiesF=Yes&AlcF=No&SexF=Female&BMI=30&MentHlth=5
+# http://127.0.0.1:31307/pred?BPF=No&CholF=Yes&PhysF=No&FruitsF=Yes&VeggiesF=Yes&AlcF=Yes&SexF=Male&BMI=25&MentHlth=2
+# http://127.0.0.1:31307/pred?BMI=22&MentHlth=0
 
 
 
@@ -158,13 +158,24 @@ message = "This API provides predictions from my random forest diabetes model."
 
 #* Confusion matrix plot Endpoint
 #* @get /confusion
-function(){
-  
+#* @png
+function() {
+  # Predictions from existing model
   preds <- predict(rf_final_model, new_data = diabetes, type = "class")
   
-  cm <- conf_mat(data.frame(truth = diabetes$DiabetesF, estimate = preds),
-                 truth, estimate)
+  # Ensure factor levels match the truth
+  preds <- factor(preds, levels = levels(diabetes$DiabetesF))
   
-  autoplot(cm)
+  # Create a tibble with truth and predicted values
+  cm_data <- tibble(
+    truth = diabetes$DiabetesF,
+    estimate = preds
+  )
+  
+  # Confusion matrix
+  cm <- conf_mat(cm_data, truth = truth, estimate = estimate)
+  
+  # Plot
+  printautoplot(cm)
 }
 
