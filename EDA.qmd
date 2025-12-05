@@ -4,15 +4,15 @@ format: html
 editor: visual
 ---
 
-##Introduction
+# Introduction
 
 The data we will be looking at is from 70,692 survey responses to the CDC's Behavioral Risk Factor Surveillance System (BRFSS) 2015, which is a health-related telephone survey that is collected annually by the CDC. This data has an equal 50-50 split of respondents with no diabetes and with either prediabetes or diabetes.
 
-#Response/Target Variable
+# Response/Target Variable
 
 -   **Diabetes_binary**: 2 classes. 0 is for no diabetes, and 1 is for prediabetes or diabetes.
 
-#Feature Variables: Here is a selection fo the feature variables that we will focus on for our analysis
+# Feature Variables: Here is a selection fo the feature variables that we will focus on for our analysis
 
 -   **HighBP**: 0 = no high BP 1 = high BP
 
@@ -109,7 +109,7 @@ str(diabetes)
 
 ```
 
-##Now lets explore some relationships!
+# Now lets explore some relationships!
 
 ```{r}
 #First, lets look at the BMI of no diabetes vs diabetes/prediabeties respondants
