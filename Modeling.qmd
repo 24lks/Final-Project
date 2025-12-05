@@ -14,10 +14,82 @@ Our goal is to create models for predicting the Diabetes variable. We’ll look 
 
 • We will use functions from tidymodels to split the data into a training and test set (70/30 split). • On the training set, we will create a 5 fold CV split.
 
+
+
+
 ```{r}
 library(ranger)
 library(tidymodels)
 library(tidyverse)
+diabetes <- read_csv("diabetes_binary_5050split_health_indicators_BRFSS2015.csv")
+diabetes<-as.tibble(diabetes)
+str(diabetes)
+#selecting only the vatriables we want to look at as described in introduction
+diabetes<-diabetes |>
+  select(Diabetes_binary, HighBP, HighChol, BMI, PhysActivity, Fruits, Veggies, HvyAlcoholConsump, MentHlth, Sex)
+str(diabetes)
+
+#Check for how many NA variables we have
+
+colSums(is.na(diabetes))
+
+#We have found that there are no missing values for the variables we selected, so that is not something we will have to worry about!
+
+#Currently all of all variables are numeric, but it will make more sense to have several of them as factor variables. Next we will create factor versions of all variables except BMI and Mental Helath
+
+diabetes <- diabetes |>
+  mutate(
+    DiabetesF = factor(
+      Diabetes_binary,
+      levels = c(0, 1),
+      labels = c("No diabetes", "Prediabetes/Diabetes")
+    ),
+    BPF = factor(
+      HighBP,
+      levels = c(0, 1),
+      labels = c("No high BP", "High BP")
+    ),
+    CholF = factor(
+      HighChol,
+      levels = c(0, 1),
+      labels = c("No high cholesterol", "High cholesterol")
+    ),
+    PhysF = factor(
+      PhysActivity,
+      levels = c(0, 1),
+      labels = c("No", "Yes")
+    ),
+    FruitsF = factor(
+      Fruits,
+      levels = c(0, 1),
+      labels = c("No", "Yes")
+    ),
+    VeggiesF = factor(
+      Veggies,
+      levels = c(0, 1),
+      labels = c("No", "Yes")
+    ),
+    AlcF = factor(
+      HvyAlcoholConsump,
+      levels = c(0, 1),
+      labels = c("No", "Yes")
+    ),
+    SexF = factor(
+      Sex,
+      levels = c(0, 1),
+      labels = c("Female", "Male")
+    )
+  )
+
+diabetes<-diabetes |>
+  select(DiabetesF, BPF, CholF, PhysF, FruitsF, VeggiesF, AlcF, SexF, BMI, MentHlth)
+
+str(diabetes)
+
+
+```
+
+```{r}
 set.seed(11)
 diabetes_split <- initial_split(diabetes, prop = 0.70)
 diabetes_train <- training(diabetes_split)
