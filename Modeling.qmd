@@ -4,23 +4,200 @@ format: html
 editor: visual
 ---
 
-## Quarto
+##Introduction
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+The data we will be looking at is from 70,692 survey responses to the CDC's Behavioral Risk Factor Surveillance System (BRFSS) 2015, which is a health-related telephone survey that is collected annually by the CDC. This data has an equal 50-50 split of respondents with no diabetes and with either prediabetes or diabetes.
 
-## Running Code
+Our goal is to create models for predicting the Diabetes variable. We’ll look at a few models and then select the best model.
 
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+#Split the Data
 
-```{r}
-1 + 1
-```
-
-You can add options to executable code like this
+• We will use functions from tidymodels to split the data into a training and test set (70/30 split). • On the training set, we will create a 5 fold CV split.
 
 ```{r}
-#| echo: false
-2 * 2
+library(ranger)
+library(tidymodels)
+library(tidyverse)
+set.seed(11)
+diabetes_split <- initial_split(diabetes, prop = 0.70)
+diabetes_train <- training(diabetes_split)
+diabetes_test <- testing(diabetes_split)
+diabetes_5_fold <- vfold_cv(diabetes_train, 5)
+
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+##Classification Tree
+
+Classification Trees are a type of tree based method for modeling. Tree based methods split up the predictor space into regions, and on each region a different prediction can be made. Classification trees are used when the goal is to predict grpup membership. This is usually done by using the most prevalent class in the region as the prediction.
+
+```{r}
+
+# Recipe
+ctree_rec <- recipe(DiabetesF ~ BPF + CholF + PhysF + FruitsF + VeggiesF + AlcF + SexF + BMI + MentHlth,
+                    data = diabetes_train)
+
+# Model
+ctree_mod <- decision_tree(tree_depth = tune(),
+                           min_n = 20,
+                           cost_complexity = tune()) |>
+  set_engine("rpart") |>
+  set_mode("classification")
+
+
+# Workflow
+ctree_wkf <- workflow() |>
+  add_recipe(ctree_rec) |>
+  add_model(ctree_mod)
+
+# Tune using defaults first
+temp <- ctree_wkf |> 
+  tune_grid(resamples = diabetes_5_fold,
+           metrics = metric_set(mn_log_loss))  # classification metrics
+temp |> 
+  collect_metrics()
+
+
+# Define grid for tuning
+tree_grid <- grid_regular(cost_complexity(),
+                          tree_depth(),
+                          levels = c(cost_complexity = 10, tree_depth = 5))
+
+# Tune over grid
+tree_fits <- ctree_wkf |> 
+  tune_grid(resamples = diabetes_5_fold,
+            grid = tree_grid,
+            metrics = metric_set(mn_log_loss))
+tree_fits
+
+
+
+# Collect metrics
+tree_fits |> 
+  collect_metrics()
+
+
+
+# Plot metrics vs parameters
+tree_fits |> 
+  collect_metrics() |>
+  mutate(tree_depth = factor(tree_depth)) |>
+  ggplot(aes(cost_complexity, mean, color = tree_depth)) +
+  geom_line(size = 1.5, alpha = 0.6) +
+  geom_point(size = 2) +
+  facet_wrap(~ .metric, scales = "free", nrow = 2) +
+  scale_x_log10(labels = scales::label_number()) +
+  scale_color_viridis_d(option = "plasma", begin = .9, end = 0)
+
+
+tree_fits |>
+  collect_metrics() |>
+  mutate(tree_depth = factor(tree_depth)) |>
+  ggplot(aes(cost_complexity, mean, color = tree_depth)) +
+  geom_line(size = 1.5, alpha = 0.6) +
+  geom_point(size = 2) +
+  facet_wrap(~ .metric, scales = "free", nrow = 2) +
+  scale_x_log10(labels = scales::label_number()) +
+  scale_color_viridis_d(option = "plasma", begin = .9, end = 0)
+
+# Arrange results by accuracy
+tree_fits |> 
+  collect_metrics() |>
+  filter(.metric == "accuracy") |>
+  arrange(desc(mean))
+
+
+# Select best parameters
+tree_best_params <- select_best(tree_fits, metric = "mn_log_loss")
+tree_best_params
+
+#Refit on the entire training set using this tuning parameter
+
+ctree_final_wkf <- ctree_wkf |> finalize_workflow(tree_best_params)
+
+ctree_final_fit <- ctree_final_wkf |>
+  last_fit(diabetes_split, metrics = metric_set(accuracy, mn_log_loss))
+
+collect_metrics(ctree_final_fit)
+
+```
+
+##Random Forest Model
+
+For a random forest model we will create multiple trees from bootstrap samples and average the results in some way for the final prediction. Random forests do not use all predictors at each step, and considers splits using a random subset of predictors each time, where the number is a tuning parameter. Using a radom forest model makes bagged trees predictions more correlated. By randomly selecting a subset of predictors, a good predictor or two won't dominate the tree fits!
+
+```{r}
+
+# Recipe
+RF_rec <- recipe(DiabetesF ~ BPF + CholF + PhysF + FruitsF + VeggiesF + AlcF + SexF + BMI + MentHlth,
+                    data = diabetes_train) |>
+  step_normalize(all_numeric()) |>
+ step_dummy(BPF, CholF, PhysF, FruitsF, VeggiesF, AlcF, SexF)
+RF_rec |>
+prep(diabetes_train) |>
+ bake(diabetes_train) 
+
+#Model
+
+rf_mod <- rand_forest(mtry= tune()) |>
+  set_engine("ranger") |>
+  set_mode("classification")
+
+#workflow
+
+rf_wkf <- workflow() |>
+ add_recipe(RF_rec) |>
+ add_model(rf_mod)
+
+#fit to our CV folds
+
+rf_fit <- rf_wkf |>
+ tune_grid(resamples = diabetes_5_fold,
+ grid = grid_regular(mtry(range = c(2, 9)), levels = 7),
+ metrics = metric_set(accuracy, mn_log_loss))
+
+#Check our metrics across the folds
+
+rf_fit |>
+ collect_metrics() |>
+ filter(.metric == "mn_log_loss") |>
+ arrange(mean)
+
+# Get our best tuning parameter
+
+rf_best_params <- select_best(rf_fit, metric = "mn_log_loss")
+rf_best_params
+
+#Refit on the entire training set using this tuning parameter
+
+rf_final_wkf <- rf_wkf |>
+ finalize_workflow(rf_best_params)
+rf_final_fit <- rf_final_wkf |>
+ last_fit(diabetes_split, metrics = metric_set(accuracy, mn_log_loss))
+
+collect_metrics(rf_final_fit)
+
+
+
+
+```
+
+
+##Compare!!
+
+Now that we have both done, lets compare and choose our winner! That winning model we will then fit on the entire data set.
+
+```{r}
+collect_metrics(ctree_final_fit)
+collect_metrics(rf_final_fit)
+```
+
+
+We want the smallest log loss as our final winner. The log loss is smaller for the random forest model so that is what we will use! Now we will fit that to the entire data set.
+
+#Fitting to Full Data Set
+
+```{r}
+rf_final_model <- rf_final_wkf |>
+  fit(diabetes)
+
+```
