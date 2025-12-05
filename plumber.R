@@ -12,11 +12,14 @@ library(tidymodels)
 library(tidyverse)
 library(yardstick)
 library(ggplot2)
-
+library(dplyr)
 
 #Read in the data
+diabetes <- read_csv("diabetes_binary_5050split_health_indicators_BRFSS2015.csv")
+rf_final_model <- readRDS("rf_final_model.rds")
 
-diabetes <- read_csv("../diabetes_binary_5050split_health_indicators_BRFSS2015.csv")
+
+
 diabetes<-as.tibble(diabetes)
 
 #convert variables like I did at the beginning
@@ -74,9 +77,6 @@ diabetes <- diabetes |>
 
 diabetes<-diabetes |>
   select(DiabetesF, BPF, CholF, PhysF, FruitsF, VeggiesF, AlcF, SexF, BMI, MentHlth)
-
-# Load the final model
-rf_final_model <- readRDS("../rf_final_model.rds")
 
 
 # Function to return default value for one variable
@@ -160,22 +160,16 @@ message = "This API provides predictions from my random forest diabetes model."
 #* @get /confusion
 #* @png
 function() {
-  # Predictions from existing model
   preds <- predict(rf_final_model, new_data = diabetes, type = "class")
-  
-  # Ensure factor levels match the truth
   preds <- factor(preds, levels = levels(diabetes$DiabetesF))
   
-  # Create a tibble with truth and predicted values
   cm_data <- tibble(
     truth = diabetes$DiabetesF,
     estimate = preds
   )
   
-  # Confusion matrix
-  cm <- conf_mat(cm_data, truth = truth, estimate = estimate)
+  cm <- conf_mat(cm_data, truth = {{truth}}, estimate = {{estimate}})
   
-  # Plot
-  printautoplot(cm)
+  # This line must be last
+  print(autoplot(cm))
 }
-
