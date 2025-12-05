@@ -135,10 +135,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>##Introduction</p>
+<section id="introduction" class="level1">
+<h1>Introduction</h1>
 <p>The data we will be looking at is from 70,692 survey responses to the CDC’s Behavioral Risk Factor Surveillance System (BRFSS) 2015, which is a health-related telephone survey that is collected annually by the CDC. This data has an equal 50-50 split of respondents with no diabetes and with either prediabetes or diabetes.</p>
 <p>Our goal is to create models for predicting the Diabetes variable. We’ll look at a few models and then select the best model.</p>
-<p>#Split the Data</p>
+</section>
+<section id="split-the-data" class="level1">
+<h1>Split the Data</h1>
 <p>• We will use functions from tidymodels to split the data into a training and test set (70/30 split). • On the training set, we will create a 5 fold CV split.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ranger)</span>
@@ -323,7 +326,9 @@ dbl (22): Diabetes_binary, HighBP, HighChol, CholCheck, BMI, Smoker, Stroke,...
 <span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>diabetes_test <span class="ot">&lt;-</span> <span class="fu">testing</span>(diabetes_split)</span>
 <span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>diabetes_5_fold <span class="ot">&lt;-</span> <span class="fu">vfold_cv</span>(diabetes_train, <span class="dv">5</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>##Classification Tree</p>
+</section>
+<section id="classification-tree" class="level1">
+<h1>Classification Tree</h1>
 <p>Classification Trees are a type of tree based method for modeling. Tree based methods split up the predictor space into regions, and on each region a different prediction can be made. Classification trees are used when the goal is to predict grpup membership. This is usually done by using the most prevalent class in the region as the prediction.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Recipe</span></span>
@@ -478,7 +483,9 @@ dbl (22): Diabetes_binary, HighBP, HighChol, CholCheck, BMI, Smoker, Stroke,...
 2 mn_log_loss binary         0.568 pre0_mod0_post0</code></pre>
 </div>
 </div>
-<p>##Random Forest Model</p>
+</section>
+<section id="random-forest-model" class="level1">
+<h1>Random Forest Model</h1>
 <p>For a random forest model we will create multiple trees from bootstrap samples and average the results in some way for the final prediction. Random forests do not use all predictors at each step, and considers splits using a random subset of predictors each time, where the number is a tuning parameter. Using a radom forest model makes bagged trees predictions more correlated. By randomly selecting a subset of predictors, a good predictor or two won’t dominate the tree fits!</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Recipe</span></span>
@@ -570,7 +577,9 @@ dbl (22): Diabetes_binary, HighBP, HighChol, CholCheck, BMI, Smoker, Stroke,...
 2 mn_log_loss binary         0.562 pre0_mod0_post0</code></pre>
 </div>
 </div>
-<p>##Compare!!</p>
+</section>
+<section id="compare" class="level1">
+<h1>Compare!!</h1>
 <p>Now that we have both done, lets compare and choose our winner! That winning model we will then fit on the entire data set.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb44"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="fu">collect_metrics</span>(ctree_final_fit)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -591,13 +600,16 @@ dbl (22): Diabetes_binary, HighBP, HighChol, CholCheck, BMI, Smoker, Stroke,...
 </div>
 </div>
 <p>We want the smallest log loss as our final winner. The log loss is smaller for the random forest model so that is what we will use! Now we will fit that to the entire data set.</p>
-<p>#Fitting to Full Data Set</p>
+</section>
+<section id="fitting-to-full-data-set" class="level1">
+<h1>Fitting to Full Data Set</h1>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a>rf_final_model <span class="ot">&lt;-</span> rf_final_wkf <span class="sc">|&gt;</span></span>
 <span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fit</span>(diabetes)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 
 
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
